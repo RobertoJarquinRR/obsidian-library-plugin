@@ -3,13 +3,19 @@ import type LibraryPlugin from "./main";
 import { isContentType, type ContentType } from "./providers/types";
 import { tr } from "./i18n";
 import { aniListViewer, anilistAuthUrl } from "./anilistSync";
+import { MalTokenManager } from "./malTokenManager";
+import { MalAuthModal } from "./ui/malAuthModal";
+import { generatePKCEAsync, malAuthUrl } from "./malSync";
 
 export class LibrarySettingTab extends PluginSettingTab {
 	private plugin: LibraryPlugin;
+	private malTokenManager: MalTokenManager;
+	private pkceVerifier: string = '';
 
 	constructor(app: App, plugin: LibraryPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
+		this.malTokenManager = new MalTokenManager(plugin);
 	}
 
 	display(): void {
@@ -122,6 +128,117 @@ export class LibrarySettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
+			.setName(tr("settings.section.mal"))
+			.setHeading();
+		containerEl.createEl("p", { text: tr("settings.mal.desc") });
+
+		new Setting(containerEl)
+			.setName(tr("settings.mal.clientId"))
+			.addText((text) =>
+				text
+					.setPlaceholder(tr("settings.mal.clientId.placeholder"))
+					.setValue(this.plugin.settings.malClientId)
+					.onChange(async (v) => {
+						this.plugin.settings.malClientId = v.trim();
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName(tr("settings.mal.clientSecret"))
+			.addText((text) => {
+				text.inputEl.type = "password";
+				text
+					.setPlaceholder(tr("settings.mal.clientSecret.placeholder"))
+					.setValue(this.plugin.settings.malClientSecret)
+					.onChange(async (v) => {
+						this.plugin.settings.malClientSecret = v.trim();
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName(tr("settings.mal.connect"))
+			.addButton((b) =>
+				b.setButtonText(tr("settings.mal.connect")).onClick(async () => {
+					const id = this.plugin.settings.malClientId.trim();
+					const secret = this.plugin.settings.malClientSecret.trim();
+					if (!id || !secret) {
+						new Notice(tr("settings.mal.needClientId"));
+						return;
+					}
+					try {
+						const { verifier, challenge } = await generatePKCEAsync();
+						this.pkceVerifier = verifier;
+						const authUrl = malAuthUrl(id, challenge);
+						window.open(authUrl, '_blank');
+						new Notice('Opening MAL auth... After login + allow, copy the full redirect URL from browser.');
+						
+						window.setTimeout(() => {
+							new MalAuthModal(this.app, this.plugin, this.malTokenManager, this.pkceVerifier, () => {
+								this.display();
+							}).open();
+						}, 500);
+					} catch {
+						new Notice('Failed to generate pkce challenge');
+					}
+				}),
+			);
+
+const tokens = this.plugin.settings.malTokens;
+		const daysLeft = this.malTokenManager.getDaysUntilExpiry(tokens);
+		const statusText = daysLeft !== null && daysLeft >= 0
+			? tr('settings.mal.tokenStatus', { days: daysLeft })
+			: tr('settings.mal.tokenExpired');
+		
+		new Setting(containerEl)
+				.setName(tr("settings.mal.tokenStatus"))
+				.setDesc(statusText)
+				.addButton((b) =>
+					b.setButtonText(tr("settings.mal.refreshNow")).onClick(async () => {
+						b.setButtonText(tr("settings.mal.refreshing"));
+						b.setDisabled(true);
+						try {
+							const newToken = await this.malTokenManager.getValidAccessToken();
+							if (newToken) {
+								new Notice(tr("settings.mal.refreshSuccess"));
+								this.display();
+							} else {
+								new Notice(tr("settings.mal.refreshFailed", { error: 'No refresh token available' }));
+							}
+						} catch (e) {
+							const errorMsg = e instanceof Error ? e.message : String(e);
+							new Notice(tr("settings.mal.refreshFailed", { error: errorMsg }));
+						} finally {
+							b.setButtonText(tr("settings.mal.refreshNow"));
+							b.setDisabled(false);
+						}
+					}),
+				)
+				.addButton((b) =>
+					b.setButtonText(tr("settings.mal.test")).onClick(async () => {
+						const token = await this.malTokenManager.getValidAccessToken();
+						if (!token) {
+							new Notice(tr("settings.mal.invalidToken"));
+							return;
+						}
+						const viewer = await this.malTokenManager.testConnection(token);
+						new Notice(
+							viewer
+								? tr("settings.mal.connected", { name: viewer.name })
+								: tr("settings.mal.invalidToken"),
+						);
+					}),
+				)
+				.addButton((b) =>
+					b.setButtonText('Clear Tokens').setWarning().onClick(() => {
+						this.malTokenManager.clearTokens();
+						void this.plugin.saveSettings();
+						this.display();
+					}),
+				);
+
+		new Setting(containerEl)
 			.setName(tr("settings.section.categories"))
 			.setHeading();
 		containerEl.createEl("p", { text: tr("settings.categories.desc") });
@@ -161,6 +278,7 @@ export class LibrarySettingTab extends PluginSettingTab {
 						.addOption("movie", "OMDb · " + tr('settings.default.movie'))
 						.addOption("series", "OMDb · " + tr('settings.default.series'))
 						.addOption("anime", "AniList · " + tr('settings.default.anime') + " (free)")
+						.addOption("anime-mal", "MyAnimeList · " + tr('settings.default.anime-mal') + " (OAuth)")
 						.addOption("book", "Books · " + tr('settings.default.book'))
 						.addOption("comic", "Comic Vine · " + tr('settings.default.comic'))
 						.addOption("game", "RAWG · " + tr('settings.default.game'))
@@ -210,6 +328,7 @@ export class LibrarySettingTab extends PluginSettingTab {
 				d.addOption('game', tr('settings.default.game'))
 				d.addOption('music', tr('settings.default.music'))
 				d.addOption('anime', tr('settings.default.anime'))
+				d.addOption('anime-mal', tr('settings.default.anime-mal'))
 				d.addOption('manual', tr('settings.default.manual'))
 				d.setValue('movie')
 				d.onChange((v) => { addValue = v })
@@ -227,6 +346,7 @@ export class LibrarySettingTab extends PluginSettingTab {
 							game: { name: tr('settings.default.game'), typeValue: 'Game', contentType: 'game' },
 							music: { name: tr('settings.default.music'), typeValue: 'Music', contentType: 'music' },
 							anime: { name: tr('settings.default.anime'), typeValue: 'Anime', contentType: 'anime' },
+							'anime-mal': { name: tr('settings.default.anime-mal'), typeValue: 'Anime', contentType: 'anime-mal' },
 							manual: { name: tr('settings.default.manual'), typeValue: 'Manual', contentType: 'manual' },
 						}
 						const def = typeMap[addValue]

@@ -18,6 +18,7 @@ import { RawgProvider } from './providers/rawg'
 import { DeezerProvider } from './providers/deezer'
 import { AnimeProvider } from './providers/anime'
 import { ComicsProvider } from './providers/comics'
+import { MalProvider } from './providers/mal'
 import { isContentType } from './providers/types'
 import type { NormalizedMetadata, SearchResult } from './providers/types'
 import { PickTypeModal } from './ui/pickTypeModal'
@@ -27,6 +28,8 @@ import { PromptModal } from './ui/promptModal'
 import { DuplicateRemovalModal, type DuplicateGroup } from './ui/duplicateModal'
 import { ShareModal, shareTargetFromFile } from './ui/shareModal'
 import { aniListViewer, fetchList, listStatus, pushEntry, type AniListEntry } from './anilistSync'
+import { malViewer, fetchMalList, malListStatus, pushMalEntry, type MalEntry } from './malSync'
+import { MalTokenManager } from './malTokenManager'
 import { LibraryView, LIBRARY_VIEW_TYPE } from './view'
 import {
 	toStr,
@@ -51,9 +54,11 @@ export default class LibraryPlugin extends Plugin {
 	private refreshCooldowns = new Map<string, number>()
 	private syncingLinks = new Set<string>()
 	private linkTimers = new Map<string, number>()
+	private malTokenManager: MalTokenManager
 
 	async onload(): Promise<void> {
 		await this.loadSettings()
+		this.malTokenManager = new MalTokenManager(this)
 		const googleBooks = new GoogleBooksProvider(() => this.settings.googleBooksApiKey)
 		const openLibrary = new OpenLibraryProvider()
 		this.registry.register(new OmdbProvider(() => this.settings.omdbApiKey))
@@ -62,6 +67,7 @@ export default class LibraryPlugin extends Plugin {
 		this.registry.register(new DeezerProvider())
 		this.registry.register(new AnimeProvider())
 		this.registry.register(new ComicsProvider(() => this.settings.comicVineApiKey))
+		this.registry.register(new MalProvider(this))
 		this.addSettingTab(new LibrarySettingTab(this.app, this))
 
 		this.registerView(LIBRARY_VIEW_TYPE, (leaf) => new LibraryView(leaf, this))
@@ -168,6 +174,18 @@ export default class LibraryPlugin extends Plugin {
 			id: 'anilist-pull',
 			name: tr('cmd.anilistPull'),
 			callback: () => { void this.anilistPull() }
+		})
+
+		this.addCommand({
+			id: 'mal-push',
+			name: tr('cmd.malPush'),
+			callback: () => { void this.malPushCurrent() }
+		})
+
+		this.addCommand({
+			id: 'mal-pull',
+			name: tr('cmd.malPull'),
+			callback: () => { void this.malPull() }
 		})
 	}
 
@@ -481,6 +499,72 @@ export default class LibraryPlugin extends Plugin {
 			updated++
 		}
 		new Notice(tr('notice.anilist.pulled', { count: updated }))
+	}
+
+	private async malPushCurrent(): Promise<void> {
+		const token = await this.malTokenManager.getValidAccessToken()
+		if (!token) { new Notice(tr('notice.mal.noToken')); return }
+		const file = this.app.workspace.getActiveFile()
+		if (!file) { new Notice(tr('notice.mal.notAnime')); return }
+		const fm = this.app.metadataCache.getFileCache(file)?.frontmatter
+		const sourceId = fm ? toStr(fm['Source ID']) : ''
+		if (!fm || toStr(fm.Source) !== 'mal' || !sourceId) {
+			new Notice(tr('notice.mal.notAnime'))
+			return
+		}
+		const mediaId = Number(sourceId)
+		if (!Number.isFinite(mediaId)) { new Notice(tr('notice.mal.notAnime')); return }
+		const watched = parseWatched(fm.Progress)
+		const status = malListStatus(fm.Complete === true, watched)
+		const rating = Number(toStr(fm['My Rating']))
+		const scoreRaw = Number.isFinite(rating) && rating > 0 ? Math.min(10, Math.round(rating)) : null
+		const ok = await pushMalEntry(token, mediaId, watched, status, scoreRaw)
+		new Notice(ok
+			? tr('notice.mal.pushed', { name: toStr(fm.Name) || file.basename })
+			: tr('notice.mal.pushFailed'))
+	}
+
+	private async malPull(): Promise<void> {
+		const token = await this.malTokenManager.getValidAccessToken()
+		if (!token) { new Notice(tr('notice.mal.noToken')); return }
+		const viewer = await malViewer(token)
+		if (!viewer) { new Notice(tr('notice.mal.pullFailed')); return }
+		new Notice(tr('notice.mal.pulling'))
+		let entries: MalEntry[]
+		try {
+			entries = await fetchMalList(token)
+		} catch (e) {
+			console.error('Library: MAL pull error', e)
+			new Notice(tr('notice.mal.pullFailed'))
+			return
+		}
+		const byId = new Map<number, MalEntry>()
+		for (const e of entries) byId.set(e.mediaId, e)
+
+		let updated = 0
+		for (const file of this.app.vault.getMarkdownFiles()) {
+			if (isTemplateFile(file.path)) continue
+			const fm = this.app.metadataCache.getFileCache(file)?.frontmatter
+			if (!fm || toStr(fm.Source) !== 'mal') continue
+			const entry = byId.get(Number(toStr(fm['Source ID'])))
+			if (!entry) continue
+			const localWatched = parseWatched(fm.Progress)
+			const localComplete = fm.Complete === true
+			const newWatched = Math.max(localWatched, entry.progress)
+			const newComplete = localComplete || entry.status === 'completed'
+			if (newWatched === localWatched && newComplete === localComplete) continue
+			const match = toStr(fm.Progress).match(progressPattern)
+			const noteTotal = match ? Number(match[2]) : 0
+			const total = String(Math.max(noteTotal, newWatched, 1))
+			await this.app.fileManager.processFrontMatter(file, (current) => {
+				Object.assign(current, {
+					Progress: `${String(newWatched)}/${total}`,
+					Complete: newComplete
+				})
+			})
+			updated++
+		}
+		new Notice(tr('notice.mal.pulled', { count: updated }))
 	}
 
 	findDuplicates(): DuplicateGroup[] {

@@ -212,7 +212,44 @@ export const I18N: Record<SupportedLocale, Record<string, string>> = {
 		'notice.anilist.pushFailed': 'Could not push to AniList',
 		'notice.anilist.pulling': 'Fetching your AniList list…',
 		'notice.anilist.pulled': 'Updated {count} note(s) from AniList',
-		'notice.anilist.pullFailed': 'Could not fetch your AniList list'
+		'notice.anilist.pullFailed': 'Could not fetch your AniList list',
+		'settings.section.mal': 'MyAnimeList sync',
+		'settings.mal.desc': 'Sync anime progress and rating to your MyAnimeList account. Register an API client at https://myanimelist.net/apiconfig/create (redirect URL: any valid URL), paste the Client ID and Client Secret, click Connect, authorize, then paste the tokens.',
+		'settings.mal.clientId': 'MyAnimeList Client ID',
+		'settings.mal.clientId.placeholder': 'e.g. abc123...',
+		'settings.mal.clientSecret': 'MyAnimeList Client Secret',
+		'settings.mal.clientSecret.placeholder': 'e.g. secret...',
+		'settings.mal.connect': 'Connect',
+		'settings.mal.token': 'MyAnimeList access token',
+		'settings.mal.token.placeholder': 'Paste the access token here',
+		'settings.mal.refresh': 'MyAnimeList refresh token',
+		'settings.mal.refresh.placeholder': 'Paste the refresh token here',
+		'settings.mal.test': 'Test connection',
+		'settings.mal.needClientId': 'Enter your MyAnimeList Client ID and Secret first',
+		'settings.mal.connected': 'Connected as {name}',
+		'settings.mal.invalidToken': 'Token is missing or invalid',
+		'settings.mal.authUrl': 'Paste the full redirect URL or authorization code here',
+		'settings.mal.authUrl.placeholder': 'https://your-redirect-uri?code=...',
+		'settings.mal.exchange': 'Exchange Code',
+		'settings.mal.exchanging': 'Exchanging code for tokens…',
+		'settings.mal.exchangeSuccess': 'Tokens saved successfully!',
+		'settings.mal.exchangeFailed': 'Failed to exchange code: {error}',
+		'settings.mal.refreshNow': 'Refresh Token Now',
+		'settings.mal.refreshing': 'Refreshing token…',
+		'settings.mal.refreshSuccess': 'Token refreshed successfully!',
+		'settings.mal.refreshFailed': 'Failed to refresh token: {error}',
+		'settings.mal.tokenStatus': 'Token expires in {days} day(s)',
+		'settings.mal.tokenExpired': 'Token expired',
+		'cmd.malPush': 'Push current note to MyAnimeList',
+		'cmd.malPull': 'Pull progress from MyAnimeList',
+		'notice.mal.notAnime': 'This note is not a MyAnimeList anime note',
+		'notice.mal.noToken': 'Connect your MyAnimeList account in settings first',
+		'notice.mal.pushed': 'Pushed to MyAnimeList: {name}',
+		'notice.mal.pushFailed': 'Could not push to MyAnimeList',
+		'notice.mal.pulling': 'Fetching your MyAnimeList list…',
+		'notice.mal.pulled': 'Updated {count} note(s) from MyAnimeList',
+		'notice.mal.pullFailed': 'Could not fetch your MyAnimeList list',
+		'settings.default.anime-mal': 'Anime (MyAnimeList)'
 	},
 	ru: {
 		'cmd.addContent': 'Добавить контент',
@@ -581,7 +618,44 @@ export const I18N: Record<SupportedLocale, Record<string, string>> = {
 		'notice.anilist.pushFailed': 'No se pudo enviar a AniList',
 		'notice.anilist.pulling': 'Obteniendo tu lista de AniList…',
 		'notice.anilist.pulled': 'Se actualizaron {count} nota(s) desde AniList',
-		'notice.anilist.pullFailed': 'No se pudo obtener tu lista de AniList'
+		'notice.anilist.pullFailed': 'No se pudo obtener tu lista de AniList',
+		'settings.section.mal': 'Sincronización con MyAnimeList',
+		'settings.mal.desc': 'Sincroniza el progreso y la valoración de anime con tu cuenta de MyAnimeList. Registra un cliente de API en https://myanimelist.net/apiconfig/create (URL de redirección: cualquier URL válida), pega el Client ID y Client Secret, haz clic en Connect, autoriza y luego pega los tokens.',
+		'settings.mal.clientId': 'Client ID de MyAnimeList',
+		'settings.mal.clientId.placeholder': 'p. ej. abc123...',
+		'settings.mal.clientSecret': 'Client Secret de MyAnimeList',
+		'settings.mal.clientSecret.placeholder': 'p. ej. secret...',
+		'settings.mal.connect': 'Connect',
+		'settings.mal.token': 'Token de acceso de MyAnimeList',
+		'settings.mal.token.placeholder': 'Pega el token de acceso aquí',
+		'settings.mal.refresh': 'Token de actualización de MyAnimeList',
+		'settings.mal.refresh.placeholder': 'Pega el token de actualización aquí',
+		'settings.mal.test': 'Probar conexión',
+		'settings.mal.needClientId': 'Introduce primero tu Client ID y Secret de MyAnimeList',
+		'settings.mal.connected': 'Conectado como {name}',
+		'settings.mal.invalidToken': 'El token falta o no es válido',
+		'settings.mal.authUrl': 'Pega la URL de redirección completa o el código de autorización aquí',
+		'settings.mal.authUrl.placeholder': 'https://tu-redirect-uri?code=...',
+		'settings.mal.exchange': 'Intercambiar Código',
+		'settings.mal.exchanging': 'Intercambiando código por tokens…',
+		'settings.mal.exchangeSuccess': '¡Tokens guardados exitosamente!',
+		'settings.mal.exchangeFailed': 'Error al intercambiar código: {error}',
+		'settings.mal.refreshNow': 'Actualizar Token Ahora',
+		'settings.mal.refreshing': 'Actualizando token…',
+		'settings.mal.refreshSuccess': '¡Token actualizado exitosamente!',
+		'settings.mal.refreshFailed': 'Error al actualizar token: {error}',
+		'settings.mal.tokenStatus': 'Token expira en {days} día(s)',
+		'settings.mal.tokenExpired': 'Token expirado',
+		'cmd.malPush': 'Enviar la nota actual a MyAnimeList',
+		'cmd.malPull': 'Obtener el progreso desde MyAnimeList',
+		'notice.mal.notAnime': 'Esta nota no es una nota de anime de MyAnimeList',
+		'notice.mal.noToken': 'Conecta primero tu cuenta de MyAnimeList en los ajustes',
+		'notice.mal.pushed': 'Enviado a MyAnimeList: {name}',
+		'notice.mal.pushFailed': 'No se pudo enviar a MyAnimeList',
+		'notice.mal.pulling': 'Obteniendo tu lista de MyAnimeList…',
+		'notice.mal.pulled': 'Se actualizaron {count} nota(s) desde MyAnimeList',
+		'notice.mal.pullFailed': 'No se pudo obtener tu lista de MyAnimeList',
+		'settings.default.anime-mal': 'Anime (MyAnimeList)'
 	},
 	fr: {
 		'cmd.addContent': 'Ajouter du contenu',
@@ -8793,6 +8867,14 @@ export const I18N: Record<SupportedLocale, Record<string, string>> = {
 	},
 }
 
+export interface MalTokens {
+	access_token: string
+	refresh_token: string
+	expires_in: number
+	token_type: string
+	created_at: number
+}
+
 export interface ICategory {
 	name: string
 	typeValue: string
@@ -8808,6 +8890,11 @@ export interface ILibrarySettings {
 	comicVineApiKey: string
 	anilistClientId: string
 	anilistToken: string
+	malClientId: string
+	malClientSecret: string
+	malToken: string
+	malRefreshToken: string
+	malTokens: MalTokens | null
 }
 
 export const DEFAULT_SETTINGS: ILibrarySettings = {
@@ -8817,5 +8904,10 @@ export const DEFAULT_SETTINGS: ILibrarySettings = {
 	rawgApiKey: '',
 	comicVineApiKey: '',
 	anilistClientId: '',
-	anilistToken: ''
+	anilistToken: '',
+	malClientId: '',
+	malClientSecret: '',
+	malToken: '',
+	malRefreshToken: '',
+	malTokens: null
 }
