@@ -54,7 +54,7 @@ export default class LibraryPlugin extends Plugin {
 	private refreshCooldowns = new Map<string, number>()
 	private syncingLinks = new Set<string>()
 	private linkTimers = new Map<string, number>()
-	private malTokenManager: MalTokenManager
+	private malTokenManager!: MalTokenManager
 
 	async onload(): Promise<void> {
 		await this.loadSettings()
@@ -548,18 +548,25 @@ export default class LibraryPlugin extends Plugin {
 			if (!fm || toStr(fm.Source) !== 'mal') continue
 			const entry = byId.get(Number(toStr(fm['Source ID'])))
 			if (!entry) continue
+
 			const localWatched = parseWatched(fm.Progress)
 			const localComplete = fm.Complete === true
+			const localScore = Number(fm['My Rating']) || 0
+
 			const newWatched = Math.max(localWatched, entry.progress)
 			const newComplete = localComplete || entry.status === 'completed'
-			if (newWatched === localWatched && newComplete === localComplete) continue
+			const newScore = entry.score
+			if (newWatched === localWatched && newComplete === localComplete && newScore === localScore) continue
+
 			const match = toStr(fm.Progress).match(progressPattern)
 			const noteTotal = match ? Number(match[2]) : 0
 			const total = String(Math.max(noteTotal, newWatched, 1))
+
 			await this.app.fileManager.processFrontMatter(file, (current) => {
 				Object.assign(current, {
 					Progress: `${String(newWatched)}/${total}`,
-					Complete: newComplete
+					Complete: newComplete,
+					"My Rating": newScore
 				})
 			})
 			updated++
