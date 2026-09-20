@@ -64,23 +64,41 @@ export async function pushMalEntry(
 	status: MalListStatus,
 	score: number | null
 ): Promise<boolean> {
-	const body = new URLSearchParams({
-		status,
-		num_episodes_watched: String(progress)
-	})
-	if (score != null) body.append('score', String(score))
+	try {
+		const safeStatus = status || 'plan_to_watch'
+		const safeProgress = Math.max(0, Number(progress) || 0)
 
-	const resp = await requestUrl({
-		url: `${API_BASE}/anime/${animeId}/my_list_status`,
-		method: 'PATCH',
-		headers: {
-			Authorization: `Bearer ${token}`,
-			'Content-Type': 'application/x-www-form-urlencoded'
-		},
-		body: body.toString(),
-		throw: false
-	})
-	return resp.status === 200
+		const body = new URLSearchParams({
+			status: safeStatus,
+			num_watched_episodes: String(safeProgress)
+		})
+
+		if (score !== null && score !== undefined && score > 0) {
+			body.append('score', String(score))
+		}
+
+		const resp = await requestUrl({
+			url: `${API_BASE}/anime/${animeId}/my_list_status`,
+			method: 'PATCH',
+			headers: {
+				Authorization: `Bearer ${token}`,
+				'Content-Type': 'application/x-www-form-urlencoded'
+			},
+			body: body.toString(),
+			throw: false
+		})
+
+		if (resp.status !== 200) {
+			console.error(`Library: MAL push failed for ID ${animeId} [HTTP ${resp.status}]:`, resp.text)
+			return false
+		}
+
+		return true
+
+	} catch (error) {
+		console.error('Library: Exception in pushMalEntry:', error)
+		return false
+	}
 }
 
 export async function fetchMalList(token: string): Promise<MalEntry[]> {
