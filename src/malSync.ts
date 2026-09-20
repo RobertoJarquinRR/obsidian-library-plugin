@@ -66,7 +66,7 @@ export async function pushMalEntry(
 ): Promise<boolean> {
 	const body = new URLSearchParams({
 		status,
-		num_watched_episodes: String(progress)
+		num_episodes_watched: String(progress)
 	})
 	if (score != null) body.append('score', String(score))
 
@@ -94,14 +94,20 @@ export async function fetchMalList(token: string): Promise<MalEntry[]> {
 			throw: false
 		})
 		if (resp.status !== 200) break
-		const data = resp.json as { data: { node: { id: number; list_status: { status: MalListStatus; score: number; num_watched_episodes: number } } }[]; paging?: { next: string } }
+		const data = resp.json as {
+			data: {
+				node: { id: number };
+				list_status?: { status: MalListStatus; score: number; num_episodes_watched: number };
+			}[];
+			paging?: { next: string };
+		};
 		for (const item of data.data) {
 			entries.push({
 				mediaId: item.node.id,
-				progress: item.node.list_status.num_watched_episodes,
-				status: item.node.list_status.status,
-				score: item.node.list_status.score
-			})
+				progress: item.list_status?.num_episodes_watched ?? 0,
+				status: item.list_status?.status ?? "",
+				score: item.list_status?.score ?? 0
+			});
 		}
 		url = data.paging?.next || ''
 	}
