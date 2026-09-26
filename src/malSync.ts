@@ -4,10 +4,11 @@ const AUTH_URL = 'https://myanimelist.net/v1/oauth2/authorize'
 const API_BASE = 'https://api.myanimelist.net/v2'
 
 export interface MalEntry {
-	mediaId: number
-	progress: number
-	status: string
-	score: number
+    mediaId: number;
+    title: string; 
+    progress: number;
+    status: string;
+    score: number;
 }
 
 export type MalListStatus = 'watching' | 'completed' | 'on_hold' | 'dropped' | 'plan_to_watch'
@@ -26,13 +27,11 @@ function generateVerifier(length: number = 128): string {
 
 export async function generatePKCE(): Promise<{ verifier: string; challenge: string }> {
 	const verifier = generateVerifier(128)
-	// For 'plain' method, challenge = verifier (no hashing)
 	return { verifier, challenge: verifier }
 }
 
 export async function generatePKCEAsync(): Promise<{ verifier: string; challenge: string }> {
 	const verifier = generateVerifier(128)
-	// For 'plain' method, challenge = verifier (no hashing)
 	return { verifier, challenge: verifier }
 }
 
@@ -102,34 +101,56 @@ export async function pushMalEntry(
 }
 
 export async function fetchMalList(token: string): Promise<MalEntry[]> {
-	const entries: MalEntry[] = []
-	let url = `${API_BASE}/users/@me/animelist?fields=list_status&limit=1000`
+    const entries: MalEntry[] = [];
+    
+    let url: string = `${API_BASE}/users/@me/animelist?fields=list_status,alternative_titles&limit=100`;
 
-	while (url) {
-		const resp = await requestUrl({
-			url,
-			headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-			throw: false
-		})
-		if (resp.status !== 200) break
-		const data = resp.json as {
-			data: {
-				node: { id: number };
-				list_status?: { status: MalListStatus; score: number; num_episodes_watched: number };
-			}[];
-			paging?: { next: string };
-		};
-		for (const item of data.data) {
-			entries.push({
-				mediaId: item.node.id,
-				progress: item.list_status?.num_episodes_watched ?? 0,
-				status: item.list_status?.status ?? "",
-				score: item.list_status?.score ?? 0
-			});
-		}
-		url = data.paging?.next || ''
-	}
-	return entries
+    while (url) {
+        const resp = await requestUrl({
+            url,
+            headers: { Authorization: `Bearer ${token}` },
+            throw: false
+        });
+
+        if (resp.status !== 200) break;
+
+        const data = resp.json as {
+            data: {
+                node: {
+                    id: number;
+                    title: string;
+                    alternative_titles?: {
+                        synonyms?: string[];
+                        en?: string;
+                        ja?: string;
+                    };
+                };
+                list_status?: {
+                    status?: MalListStatus;
+                    score?: number;
+                    num_episodes_watched?: number;
+                };
+            }[];
+            paging?: { next?: string };
+        };
+
+        for (const item of data.data) {
+            const romajiTitle = item.node.alternative_titles?.synonyms?.[0] 
+                ?? item.node.title;
+
+            entries.push({
+                mediaId: item.node.id,
+                title: romajiTitle, 
+                progress: item.list_status?.num_episodes_watched ?? 0,
+                status: item.list_status?.status ?? "",
+                score: item.list_status?.score ?? 0
+            });
+        }
+
+        url = data.paging?.next || "";
+    }
+
+    return entries;
 }
 
 export function malListStatus(complete: boolean, watched: number): MalListStatus {

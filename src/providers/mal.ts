@@ -79,19 +79,26 @@ export class MalProvider implements ContentProvider {
 			const clientId = this.tokenManager['clientId']
 			if (!clientId) return []
 			const headers = await this.headers()
-			const url = `${this.BASE}/anime?q=${encodeURIComponent(query)}&limit=20&fields=${SEARCH_FIELDS}`
+			const url = `${this.BASE}/anime?q=${encodeURIComponent(query)}&limit=20&nsfw=true&fields=${SEARCH_FIELDS}`
 			const resp = await requestUrl({ url, headers, throw: false })
 			if (resp.status !== 200) return []
 			const data = resp.json as MalSearchResponse
-			return (data.data || []).map((item) => ({
-				provider: this.id,
-				sourceId: String(item.node.id),
-				title: item.node.alternative_titles?.en || item.node.title,
-				year: item.node.start_date ? new Date(item.node.start_date).getFullYear() : null,
-				cover: item.node.main_picture?.large || item.node.main_picture?.medium || null,
-				subtitle: item.node.alternative_titles?.ja || null,
-				raw: item.node
-			}))
+
+			return (data.data || []).map((item) => {
+				const alt = item.node.alternative_titles;
+
+				const romajiTitle = alt?.synonyms?.[0] ?? item.node.title;
+
+				return {
+					provider: this.id,
+					sourceId: String(item.node.id),
+					title: romajiTitle,
+					year: item.node.start_date ? new Date(item.node.start_date).getFullYear() : null,
+					cover: item.node.main_picture?.large || item.node.main_picture?.medium || null,
+					subtitle: alt?.ja || alt?.en || null,
+					raw: item.node
+				}
+			})
 		} catch (e) {
 			console.error('Library: MAL search error', e)
 			return []
@@ -113,8 +120,13 @@ export class MalProvider implements ContentProvider {
 			}
 			if (!media) return null
 
+			const alt = media.alternative_titles
+			const romajiTitle = (alt?.synonyms && alt.synonyms.length > 0)
+				? alt.synonyms[0]
+				: media.title
+
 			const fields: Record<string, unknown> = {
-				Name: media.alternative_titles?.en || media.title,
+				Name: romajiTitle,
 				Year: media.start_date ? new Date(media.start_date).getFullYear() : null,
 				Genre: media.genres?.map((g) => g.name) || [],
 				Creator: media.studios?.map((s) => s.name) || [],
