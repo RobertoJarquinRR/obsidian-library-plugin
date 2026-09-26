@@ -147,7 +147,7 @@ export class LibraryView extends ItemView {
 		const collapseBtn = header.createEl('button', {
 			cls: 'library-collapse-btn',
 			text: '▼',
-			attr: { 'aria-label': tr('stats.title'), 'aria-expanded': 'false' }
+			attr: { 'aria-label': tr('stats.title'), 'aria-expanded': 'true' }
 		})
 		const body = section.createDiv({ cls: 'library-stats-body' })
 
@@ -218,7 +218,7 @@ export class LibraryView extends ItemView {
 		collapseBtn.addEventListener('click', () => {
 			const collapsed = body.classList.toggle('collapsed')
 			collapseBtn.setText(collapsed ? '▶' : '▼')
-			collapseBtn.setAttribute('aria-expanded', collapsed ? 'true' : 'false')
+			collapseBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
 		})
 	}
 
@@ -277,7 +277,7 @@ export class LibraryView extends ItemView {
 		const collapseBtn = toolbar.createEl('button', {
 			cls: 'library-collapse-btn',
 			text: '▼',
-			attr: { 'aria-label': category.name, 'aria-expanded': 'false' }
+			attr: { 'aria-label': category.name, 'aria-expanded': 'true' }
 		})
 		toolbar.createDiv({ cls: 'library-toolbar-spacer' })
 
@@ -302,8 +302,8 @@ export class LibraryView extends ItemView {
 			{ label: tr('sort.date'), key: 'date' }
 		]
 
-		let currentSort: SortKey = 'year'
-		let sortAsc = false
+		let currentSort: SortKey = 'name'
+		let sortAsc = true
 
 		const updateTrigger = (): void => {
 			const opt = sortOptions.find(o => o.key === currentSort)
@@ -398,11 +398,11 @@ export class LibraryView extends ItemView {
 			const type = toStr(fm.Type)
 			const emoji = type === 'anime' ? '🎌'
 				: type === 'comic' ? '📚'
-				: type === 'book' ? '📖'
-				: type === 'game' ? '🎮'
-				: type === 'music' ? '🎵'
-				: type === 'manual' ? '📝'
-				: '🎬'
+					: type === 'book' ? '📖'
+						: type === 'game' ? '🎮'
+							: type === 'music' ? '🎵'
+								: type === 'manual' ? '📝'
+									: '🎬'
 			imgDiv.createSpan({ text: emoji })
 		}
 
